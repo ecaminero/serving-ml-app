@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "serving-ml-model"
+version = "0.1.0"
+description = ""
+authors = ["Edwin <ecaminero@>"]
+readme = "README.md"
+packages = [{ include = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+langgraph = "^0.3.8"
+langsmith = "^0.3.13"
+langchain-anthropic = "^0.3.9"
+langgraph-cli = {extras = ["inmem"], version = "^0.1.76"}
+python-dotenv = "^1.0.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.coverage.run]
+branch = true
+omit = ["**/__init__.py",]
+source = ["src"]
