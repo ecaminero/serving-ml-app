@@ -21,12 +21,7 @@ Este proyecto implementa una API RESTful utilizando FastAPI para el despliegue d
 ## Instalación
 
 ```bash
-# Crear entorno virtual
-python -m venv venv
-source venv/bin/activate  # En Windows: venv\Scripts\activate
-
-# Instalar dependencias
-pip install -r requirements.txt
+poetry install 
 ```
 
 
@@ -35,7 +30,7 @@ pip install -r requirements.txt
 ### Ejecutar localmente
 
 ```bash
-uvicorn app.main:app --reload
+poetry run fastapi dev src/app.py
 ```
 
 La API estará disponible en http://localhost:8000
