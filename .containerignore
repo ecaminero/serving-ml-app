@@ -447,3 +447,4 @@ notebooks
 container
 models
 .github
+.poetry

@@ -46,7 +46,6 @@ SERVING-ML-APP/
 poetry install 
 ```
 
-
 ## Uso
 
 ### Ejecutar localmente
@@ -56,6 +55,13 @@ poetry run fastapi dev src/main.py
 ```
 
 La API estará disponible en http://localhost:8000
+
+## Ejecutar en contenedor
+
+```bash
+docker build -t ml-model -f container/Containerfile .
+docker run -d -p 127.0.0.1:8080:8080 ml-model
+```
 
 ### Documentación
 
