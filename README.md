@@ -18,6 +18,28 @@ Este proyecto implementa una API RESTful utilizando FastAPI para el despliegue d
 - Pydantic
 - Dependencias específicas del modelo (scikit-learn, TensorFlow, PyTorch, etc.)
 
+
+## Estructura del Proyecto
+
+La organización de archivos y directorios del proyecto es la siguiente:
+
+```
+SERVING-ML-APP/
+├── .github/               # Configuración y workflows de GitHub
+├── .poetry/               # Configuración de Poetry (gestor de dependencias)
+├── container/             # Archivos relacionados con la contenerización
+├── models/                # Modelos de machine learning
+├── notebooks/             # Jupyter notebooks para análisis y experimentación
+├── src/                   # Código fuente principal de la aplicación
+├── .containerignore       # Archivos a ignorar en la construcción del contenedor
+├── .dockerignore          # Archivos a ignorar en la construcción de Docker
+├── .gitignore             # Archivos a ignorar en Git
+├── poetry.lock            # Archivo de bloqueo de dependencias de Poetry
+├── pyproject.toml         # Configuración del proyecto y dependencias
+└── README.md              # Documentación principal del proyecto
+```
+
+
 ## Instalación
 
 ```bash
