@@ -40,3 +40,8 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::284242573810:role/github-odic-auth-Role-mE7X2nV7bNEm
           aws-region: us-east-1
+      
+      - name: List S3 Bucket
+        run: |
+            echo "==> Listing all S3 buckets"
+            aws s3 ls          
