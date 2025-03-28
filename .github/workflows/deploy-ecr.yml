@@ -1,0 +1,42 @@
+name: Deploy on ECS
+# on:
+#   pull_request:
+#     types: [closed]
+#     branches:
+#       - main
+#     paths:
+#       - 'src/**'
+#       - 'container/**'
+#       - 'poetry.lock'
+#       - 'pyproject.toml'
+#       - '.github/deploy-ecr.yml'
+
+on:
+  push:
+    branches: [ "9" ]
+
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  upload-to-gcs:
+    name: Google Cloud Storage
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+  
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Install awscli
+      - uses: unfor19/install-aws-cli-action@v1
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4 # More information on this action can be found below in the 'AWS Credentials' section
+        with:
+          role-to-assume: arn:aws:iam::284242573810:role/github-odic-auth-Role-mE7X2nV7bNEm
+          aws-region: us-east-1
