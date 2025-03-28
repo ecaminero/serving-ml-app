@@ -52,7 +52,7 @@ poetry install
 ### Ejecutar localmente
 
 ```bash
-poetry run fastapi dev src/app.py
+poetry run fastapi dev src/main.py
 ```
 
 La API estará disponible en http://localhost:8000
