@@ -23,6 +23,9 @@ class HealthCheck(BaseModel):
 def get_health() -> HealthCheck:
     return HealthCheck(status="OK")
 
+@app.get("/", tags=["check"])
+async def predict():
+    return {"message": "Hello World"}
 
 @app.post("/predict", tags=["predict"])
 async def predict():
