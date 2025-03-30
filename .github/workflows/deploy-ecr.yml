@@ -84,7 +84,7 @@ jobs:
         with:
           task-definition-family: ${{ env.AWS_ECS_DEFINITION_FAMILY }}
           container-name: ml-service
-          image: ${{ needs.build.outputs.image  }}
+          image: ${{ steps.build-and-push.outputs.image  }}
           environment-variables: |
             LOG_LEVEL=info
             ENVIRONMENT=${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'dev' }}
