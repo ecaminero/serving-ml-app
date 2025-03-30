@@ -83,13 +83,32 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4 
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE }}
+          aws-region: us-east-1
+          role-session-name: github-session
+
       - name: Update ECS task definition with new image
         run: |
           echo "Registry from build: ${{ needs.build.outputs.registry }}"
           echo "Repository: ${{ needs.build.outputs.repository }}"
           echo "Image tag: ${{ needs.build.outputs.image_tag }}"
           echo "Full image URL: ${{ needs.build.outputs.image }}"
+      
+      - name: Download task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.AWS_ECS_DEFINITION_FAMILY }} \
+            --query taskDefinition > task-definition.json
+          cat task-definition.json
+          # Make sure the file exists and has content
+          if [ ! -s task-definition.json ]; then
+            echo "Error: Failed to download task definition or file is empty"
+            exit 1
+          fi
       
       - name: Render Amazon ECS task definition
         id: render-web-container
@@ -110,6 +129,7 @@ jobs:
           service: ${{ secrets.AWS_ECS_SERVICE }}
           cluster: ${{ secrets.AWS_ECS_CLUSTER }}
           wait-for-service-stability: true
+          
       - name: Post-deployment verification
         run: |
           echo "Deployment completed successfully"
