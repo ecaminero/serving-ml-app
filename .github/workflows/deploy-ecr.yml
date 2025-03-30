@@ -6,6 +6,11 @@ on:
       - main
     paths:
       - 'pyproject.toml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'pyproject.toml'
 
 permissions:
   id-token: write
