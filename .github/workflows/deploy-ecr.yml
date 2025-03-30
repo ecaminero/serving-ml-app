@@ -90,13 +90,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4 
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-session-name: github-deploy-session
-
       - name: Update ECS task definition with new image
         run: |
           echo "Registry from build: ${{ needs.build.outputs.registry }}"
