@@ -90,40 +90,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Update ECS task definition with new image
-        run: |
-          echo "Registry from build: ${{ needs.build.outputs.registry }}"
-          echo "Repository: ${{ needs.build.outputs.repository }}"
-          echo "Image tag: ${{ needs.build.outputs.image_tag }}"
-          echo "Full image URL: ${{ needs.build.outputs.image }}"
-      
-          - name: Download task definition
-          run: |
-            # Check if AWS CLI is working
-            aws --version
-            
-            # Try with explicit region
-            aws ecs describe-task-definition \
-              --task-definition ${{ env.AWS_ECS_DEFINITION_FAMILY }} \
-              --region us-east-1 \
-              --query taskDefinition > task-definition.json
-            
-            # Verify file content
-            ls -la
-            cat task-definition.json
-            
-            # Make sure the file exists and has content
-            if [ ! -s task-definition.json ]; then
-              echo "Error: Failed to download task definition or file is empty"
-              exit 1
-            fi
-        
       
       - name: Render Amazon ECS task definition
         id: render-ml-container
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: task-definition.json
           task-definition-family: ${{ env.AWS_ECS_DEFINITION_FAMILY }}
           container-name: ml-service
           image: ${{ needs.build.outputs.image }}
