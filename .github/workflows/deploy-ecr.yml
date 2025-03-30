@@ -36,6 +36,14 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           aws-region: us-east-1
           role-session-name: github-session
+      - name: Extract version from pyproject.toml
+        id: get-version
+        run: |
+          # Esta línea extrae la versión usando grep y sed
+          VERSION=$(grep -m 1 'version = ' pyproject.toml | sed 's/version = //g' | sed 's/"//g' | sed "s/'//g" | xargs)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION"
+  
       
       - name: Login to Amazon ECR
         id: login-aws-ecr
@@ -46,7 +54,7 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-aws-ecr.outputs.registry }}
           ECR_REPOSITORY: uai/serving-ml-model
-          IMAGE_TAG: 0.0.4
+          IMAGE_TAG: ${{ steps.get-version.outputs.VERSION }}
         run: |
           # Usar el formato actualizado para establecer outputs
           echo "registry=$ECR_REGISTRY" >> $GITHUB_OUTPUT
