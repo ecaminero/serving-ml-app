@@ -90,7 +90,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           aws-region: ${{ env.AWS_REGION }}
-          role-session-name: github-deploy-session
+          role-session-name: github-session
 
       - name: Update ECS task definition with new image
         run: |
