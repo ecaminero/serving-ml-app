@@ -16,6 +16,9 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  AWS_ECS_DEFINITION_FAMILY: fasapi-ml-service-fargate
+
 jobs:
   build:
     name: Build Container Image
@@ -87,3 +90,30 @@ jobs:
           echo "Repository: ${{ needs.build.outputs.repository }}"
           echo "Image tag: ${{ needs.build.outputs.image_tag }}"
           echo "Full image URL: ${{ needs.build.outputs.image }}"
+      
+      - name: Render Amazon ECS task definition
+        id: render-web-container
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          task-definition-family: ${{ env.AWS_ECS_DEFINITION_FAMILY }}
+          container-name: ml-service
+          image: ${{ needs.build.outputs.image }}
+          environment-variables: |
+            LOG_LEVEL=info
+            ENVIRONMENT=${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'dev' }}
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-task-definition.outputs.task-definition }}
+          service: ${{ secrets.AWS_ECS_SERVICE }}
+          cluster: ${{ secrets.AWS_ECS_CLUSTER }}
+          wait-for-service-stability: true
+      - name: Post-deployment verification
+        run: |
+          echo "Deployment completed successfully"
+          aws ecs describe-services \
+            --cluster ${{ secrets.AWS_ECS_CLUSTER }} \
+            --services ${{ secrets.AWS_ECS_SERVICE }} \
+            --query 'services[0].deployments[0].status'
