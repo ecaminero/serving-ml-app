@@ -54,7 +54,7 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-aws-ecr.outputs.registry }}
           ECR_REPOSITORY: uai/serving-ml-model
-          IMAGE_TAG: 0.0.3
+          IMAGE_TAG: 0.0.4
         run: |
           # Usar el formato actualizado para establecer outputs
           echo "registry=$ECR_REGISTRY" >> $GITHUB_OUTPUT
