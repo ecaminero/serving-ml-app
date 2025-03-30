@@ -1,16 +1,17 @@
 [tool.poetry]
 name = "serving-ml-model"
-version = "0.1.0"
+version = "0.0.5"
 description = ""
 authors = ["Edwin <ecaminero@>"]
 readme = "README.md"
 packages = [{ include = "src" }]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 python-dotenv = "^1.0.1"
 fastapi = {extras = ["standard"], version = "^0.115.12"}
 uvicorn = "^0.34.0"
+tomli = "^2.2.1"
 
 [poetry.group.dev.dependencies]
 pytest = "^5.2"

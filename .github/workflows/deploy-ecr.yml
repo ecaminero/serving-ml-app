@@ -1,19 +1,11 @@
 name: Deploy on ECS
-# on:
-#   pull_request:
-#     types: [closed]
-#     branches:
-#       - main
-#     paths:
-#       - 'src/**'
-#       - 'container/**'
-#       - 'poetry.lock'
-#       - 'pyproject.toml'
-#       - '.github/deploy-ecr.yml'
-
 on:
-  push:
-    branches: [ "9" ]
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+    paths:
+      - 'pyproject.toml'
 
 permissions:
   id-token: write
@@ -76,7 +68,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
-      - name: Use values from build job
+      - name: Update ECS task definition with new image
         run: |
           echo "Registry from build: ${{ needs.build.outputs.registry }}"
           echo "Repository: ${{ needs.build.outputs.repository }}"

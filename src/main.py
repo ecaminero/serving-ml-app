@@ -1,5 +1,6 @@
 """Entrypoint to invoke the FastAPI application service with."""
-
+from src import __version__
+from src.utils import id_generator
 from fastapi import FastAPI, status
 from pydantic import BaseModel
 
@@ -9,6 +10,7 @@ app = FastAPI()
 class HealthCheck(BaseModel):
     """Response model to validate and return when performing a health check."""
     status: str = "OK"
+    version: int = __version__
 
 
 
@@ -24,8 +26,12 @@ def get_health() -> HealthCheck:
     return HealthCheck(status="OK")
 
 @app.get("/", tags=["check"])
-async def predict():
-    return {"message": "Hello World"}
+async def get():
+    return {
+        "message": id_generator(),
+        "status": status.HTTP_200_OK,
+        "version": __version__
+    }
 
 @app.post("/predict", tags=["predict"])
 async def predict():
