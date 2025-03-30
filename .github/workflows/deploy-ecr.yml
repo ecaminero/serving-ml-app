@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 env:
-  AWS_ECS_DEFINITION_FAMILY: fasapi-ml-service-fargate
+  AWS_ECS_DEFINITION_FAMILY: fastapi-ml-service-fargate
   AWS_REGION: us-east-1
 
 jobs:
