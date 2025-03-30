@@ -46,6 +46,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: github-session
+      
       - name: Extract version from pyproject.toml
         id: get-version
         run: |
@@ -89,7 +90,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4 
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-session
       
       - name: Render Amazon ECS task definition
         id: render-ml-container
