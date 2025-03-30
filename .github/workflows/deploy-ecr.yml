@@ -10,7 +10,7 @@ on:
     branches:
       - main
     paths:
-      - 'pyproject.toml'
+      - 'workflows/**'
 
 permissions:
   id-token: write
