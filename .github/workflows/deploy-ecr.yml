@@ -80,7 +80,7 @@ jobs:
 
       - name: Render Amazon ECS task definition
         id: render-ml-container
-        uses: aws-actions/amazon-ecs-render-task-definition@v2
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition-family: ${{ env.AWS_ECS_DEFINITION_FAMILY }}
           container-name: ml-service
@@ -90,7 +90,7 @@ jobs:
             ENVIRONMENT=${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'dev' }}
 
       - name: Deploy to Amazon ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           service: ${{ secrets.AWS_ECS_SERVICE }}
           cluster: ${{ secrets.AWS_ECS_CLUSTER }}
