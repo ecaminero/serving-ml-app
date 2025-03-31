@@ -80,7 +80,7 @@ jobs:
 
       - name: Render Amazon ECS task definition
         id: render-ml-container
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        uses: aws-actions/amazon-ecs-render-task-definition@v2
         with:
           task-definition-family: ${{ env.AWS_ECS_DEFINITION_FAMILY }}
           container-name: ml-service
