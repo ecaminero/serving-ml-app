@@ -1,0 +1,188 @@
+name: Build ML Container Image
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+    paths:
+      - 'pyproject.toml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'pyproject.toml'
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  build_and_push:
+    name: Build Container Image
+    runs-on: ubuntu-latest
+    environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'develop' }}
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    outputs:
+      registry: ${{ steps.build-and-push.outputs.registry }}
+      repository: ${{ steps.build-and-push.outputs.repository }}
+      image_tag: ${{ steps.build-and-push.outputs.image_tag }}
+      image: ${{ steps.build-and-push.outputs.image }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4 
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-session
+  
+      - name: Login to Amazon ECR
+        id: login-aws-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Extract version from pyproject.toml
+        id: get-version
+        run: |
+          # Esta línea extrae la versión usando grep y sed
+          VERSION=$(grep -m 1 'version = ' pyproject.toml | sed 's/version = //g' | sed 's/"//g' | sed "s/'//g" | xargs)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION"
+
+      - name: Build and push the tagged docker image to Amazon ECR
+        id: build-and-push
+        env:
+          ECR_REGISTRY: ${{ steps.login-aws-ecr.outputs.registry }}
+          ECR_REPOSITORY: uai/serving-ml-model
+          IMAGE_TAG: ${{ steps.get-version.outputs.VERSION }}
+        run: |
+          # Usar el formato actualizado para establecer outputs
+          echo "registry=$ECR_REGISTRY" >> $GITHUB_OUTPUT
+          echo "repository=$ECR_REPOSITORY" >> $GITHUB_OUTPUT
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          
+          # Build and push the Docker image
+            docker  build --platform linux/amd64 \
+              -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG  \
+              -f container/Containerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+  
+  deploy:
+    name: Deploy to ECS
+    needs: [build_and_push]
+    # Run this job if build succeeded OR if manually triggered with skip_build
+    if: ${{ always() && (needs.build.result == 'success' || (github.event_name == 'workflow_dispatch' && github.event.inputs.skip_build == 'true')) }}
+    runs-on: ubuntu-latest
+    environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'develop' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 
+  
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4 
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-session
+      
+      - name: Login to Amazon ECR
+        id: login-aws-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+  
+      - name: Set image for manual deployment
+        id: manual-image
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.skip_build == 'true' }}
+        run: |
+          REGISTRY="${{ steps.login-aws-ecr.outputs.registry }}"
+          REPOSITORY="${{ env.ECR_REPOSITORY }}"
+          
+          if [[ -n "${{ github.event.inputs.image_tag }}" ]]; then
+            # Use specified tag
+            IMAGE_TAG="${{ github.event.inputs.image_tag }}"
+          else
+            # Get latest tag if none specified
+            IMAGE_TAG=$(aws ecr describe-images \
+              --repository-name $REPOSITORY \
+              --query 'sort_by(imageDetails,& imagePushedAt)[-1].imageTags[0]' \
+              --output text)
+          fi
+          
+          if [ "$IMAGE_TAG" == "None" ] || [ -z "$IMAGE_TAG" ]; then
+            echo "No images found in the repository"
+            exit 1
+          fi
+          
+          IMAGE="$REGISTRY/$REPOSITORY:$IMAGE_TAG"
+          
+          echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
+          echo "repository=$REPOSITORY" >> $GITHUB_OUTPUT
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          echo "Using image: $IMAGE"
+
+
+      - name: Set deployment image
+        id: set-image
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.skip_build }}" == "true" ]]; then
+            echo "image=${{ steps.manual-image.outputs.image }}" >> $GITHUB_OUTPUT
+            echo "Using manually specified/latest image: ${{ steps.manual-image.outputs.image }}"
+          else
+            echo "image=${{ needs.build.outputs.image }}" >> $GITHUB_OUTPUT
+            echo "Using newly built image: ${{ needs.build.outputs.image }}"
+          fi
+
+      - name: Download task definition
+        run: |
+          if ! aws ecs describe-task-definition \
+            --task-definition ${{ env.AWS_ECS_DEFINITION_FAMILY }} \
+            --query taskDefinition > task-definition.json; then
+            echo "Failed to download task definition"
+            exit 1
+          fi
+          
+          # Verify the file exists and has content
+          if [ ! -s task-definition.json ]; then
+            echo "Task definition file is empty or does not exist"
+            exit 1
+          fi
+          
+          echo "Task definition downloaded successfully"
+
+      - name: Fill in new image ID in task definition
+        id: render-ml-container
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json 
+          container-name: ml-service
+          image: ${{ steps.set-image.outputs.image }}
+          environment-variables: |
+            LOG_LEVEL=info
+            ENVIRONMENT=${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'dev' }}
+  
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-ml-container.outputs.task-definition }}
+          service: ${{ secrets.AWS_ECS_SERVICE }}
+          cluster: ${{ secrets.AWS_ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+      - name: Post-deployment verification
+        run: |
+          echo "Deployment completed successfully"
+          aws ecs describe-services \
+            --cluster ${{ secrets.AWS_ECS_CLUSTER }} \
+            --services ${{ secrets.AWS_ECS_SERVICE }} \
+            --query 'services[0].deployments[0].status'
