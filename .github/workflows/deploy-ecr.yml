@@ -80,12 +80,15 @@ jobs:
 
       - name: Download task definition 
         run: |
-          aws ecs describe-task-definition - task-definition etap-development - query taskDefinition > task-definition.json
+          aws ecs describe-task-definition \
+          --task-definition fastapi-ml-service-fargate \
+          --query taskDefinition > task-definition.json
 
-      - name: Render Amazon ECS task definition
+      - name: Fill in new image ID in task definition
         id: render-ml-container
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
+          task-definition: task-definition.json 
           task-definition-family: ${{ env.AWS_ECS_DEFINITION_FAMILY }}
           container-name: ml-service
           image: ${{ steps.build-and-push.outputs.image  }}
