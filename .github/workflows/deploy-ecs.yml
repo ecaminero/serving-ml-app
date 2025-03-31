@@ -1,0 +1,146 @@
+name: Deploy to ECS
+on:
+  workflow_run:
+    workflows: ["Build ML Container Image"]
+    types:
+      - completed
+  
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Docker image tag to deploy (leave empty to use latest build)'
+        required: false
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_ECS_DEFINITION_FAMILY: fastapi-ml-service-fargate
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: Deploy to ECS
+    runs-on: ubuntu-latest
+    environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'develop' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4 
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-session
+
+      - name: Download image info
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.image_tag == ''
+        uses: actions/download-artifact@v3
+        with:
+          name: image-info
+          path: ./
+
+      - name: Read image info
+        id: image-info
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.image_tag == ''
+        run: |
+          if [ -f "./image-info.json" ]; then
+            # Read from the artifact
+            REGISTRY=$(jq -r '.registry' image-info.json)
+            REPOSITORY=$(jq -r '.repository' image-info.json)
+            IMAGE_TAG=$(jq -r '.image_tag' image-info.json)
+            IMAGE=$(jq -r '.image' image-info.json)
+          else
+            # If artifact not available, get latest image info from ECR
+            echo "Image info not found, fetching latest image from ECR..."
+            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin $AWS_ACCOUNT.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+            
+            # Get ECR repository URI
+            ECR_REPOSITORY="uai/serving-ml-model"
+            REGISTRY=$(aws ecr describe-repositories --repository-names $ECR_REPOSITORY --query 'repositories[0].repositoryUri' --output text | sed 's|/.*||')
+            
+            # Get latest image tag
+            IMAGE_TAG=$(aws ecr describe-images --repository-name $ECR_REPOSITORY --query 'sort_by(imageDetails,& imagePushedAt)[-1].imageTags[0]' --output text)
+            IMAGE="$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          fi
+          
+          echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
+          echo "repository=$REPOSITORY" >> $GITHUB_OUTPUT
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          echo "Using image: $IMAGE"
+
+      - name: Use manually specified image tag
+        id: manual-image
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.image_tag != ''
+        run: |
+          REGISTRY=$(aws ecr describe-repositories --repository-names uai/serving-ml-model --query 'repositories[0].repositoryUri' --output text | sed 's|/.*||')
+          REPOSITORY="uai/serving-ml-model"
+          IMAGE_TAG="${{ github.event.inputs.image_tag }}"
+          IMAGE="$REGISTRY/$REPOSITORY:$IMAGE_TAG"
+          
+          echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
+          echo "repository=$REPOSITORY" >> $GITHUB_OUTPUT
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          echo "Using manually specified image: $IMAGE"
+
+      - name: Set final image
+        id: set-image
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.image_tag }}" != "" ]]; then
+            echo "image=${{ steps.manual-image.outputs.image }}" >> $GITHUB_OUTPUT
+          else
+            echo "image=${{ steps.image-info.outputs.image }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download task definition
+        run: |
+          if ! aws ecs describe-task-definition \
+            --task-definition ${{ env.AWS_ECS_DEFINITION_FAMILY }} \
+            --query taskDefinition > task-definition.json; then
+            echo "Failed to download task definition"
+            exit 1
+          fi
+          
+          # Verify the file exists and has content
+          if [ ! -s task-definition.json ]; then
+            echo "Task definition file is empty or does not exist"
+            exit 1
+          fi
+          
+          echo "Task definition downloaded successfully"
+          cat task-definition.json
+
+      - name: Fill in new image ID in task definition
+        id: render-ml-container
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json 
+          container-name: ml-service
+          image: ${{ steps.set-image.outputs.image }}
+          environment-variables: |
+            LOG_LEVEL=info
+            ENVIRONMENT=${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'dev' }}
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-ml-container.outputs.task-definition }}
+          service: ${{ secrets.AWS_ECS_SERVICE }}
+          cluster: ${{ secrets.AWS_ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+      - name: Post-deployment verification
+        run: |
+          echo "Deployment completed successfully"
+          aws ecs describe-services \
+            --cluster ${{ secrets.AWS_ECS_CLUSTER }} \
+            --services ${{ secrets.AWS_ECS_SERVICE }} \
+            --query 'services[0].deployments[0].status'
