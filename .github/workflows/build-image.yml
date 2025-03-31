@@ -65,16 +65,16 @@ jobs:
           ECR_REPOSITORY: uai/serving-ml-model
           IMAGE_TAG: ${{ steps.get-version.outputs.VERSION }}
         run: |
-          # Set outputs in updated format
+          # Usar el formato actualizado para establecer outputs
           echo "registry=$ECR_REGISTRY" >> $GITHUB_OUTPUT
           echo "repository=$ECR_REPOSITORY" >> $GITHUB_OUTPUT
           echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
           
           # Build and push the Docker image
-          docker build --platform linux/amd64 \
-            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
-            -f container/Containerfile .
+            docker  build --platform linux/amd64 \
+              -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG  \
+              -f container/Containerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Create image info artifact

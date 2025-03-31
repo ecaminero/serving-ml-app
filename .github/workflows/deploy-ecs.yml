@@ -38,43 +38,10 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: github-session
-
-      - name: Download image info
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.image_tag == ''
-        uses: actions/download-artifact@v3
-        with:
-          name: image-info
-          path: ./
-
-      - name: Read image info
-        id: image-info
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.image_tag == ''
-        run: |
-          if [ -f "./image-info.json" ]; then
-            # Read from the artifact
-            REGISTRY=$(jq -r '.registry' image-info.json)
-            REPOSITORY=$(jq -r '.repository' image-info.json)
-            IMAGE_TAG=$(jq -r '.image_tag' image-info.json)
-            IMAGE=$(jq -r '.image' image-info.json)
-          else
-            # If artifact not available, get latest image info from ECR
-            echo "Image info not found, fetching latest image from ECR..."
-            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin $AWS_ACCOUNT.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
-            
-            # Get ECR repository URI
-            ECR_REPOSITORY="uai/serving-ml-model"
-            REGISTRY=$(aws ecr describe-repositories --repository-names $ECR_REPOSITORY --query 'repositories[0].repositoryUri' --output text | sed 's|/.*||')
-            
-            # Get latest image tag
-            IMAGE_TAG=$(aws ecr describe-images --repository-name $ECR_REPOSITORY --query 'sort_by(imageDetails,& imagePushedAt)[-1].imageTags[0]' --output text)
-            IMAGE="$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          fi
-          
-          echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
-          echo "repository=$REPOSITORY" >> $GITHUB_OUTPUT
-          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
-          echo "image=$IMAGE" >> $GITHUB_OUTPUT
-          echo "Using image: $IMAGE"
+      
+      - name: Login to Amazon ECR
+        id: login-aws-ecr
+        uses: aws-actions/amazon-ecr-login@v1
 
       - name: Use manually specified image tag
         id: manual-image
@@ -91,14 +58,6 @@ jobs:
           echo "image=$IMAGE" >> $GITHUB_OUTPUT
           echo "Using manually specified image: $IMAGE"
 
-      - name: Set final image
-        id: set-image
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.image_tag }}" != "" ]]; then
-            echo "image=${{ steps.manual-image.outputs.image }}" >> $GITHUB_OUTPUT
-          else
-            echo "image=${{ steps.image-info.outputs.image }}" >> $GITHUB_OUTPUT
-          fi
 
       - name: Download task definition
         run: |
