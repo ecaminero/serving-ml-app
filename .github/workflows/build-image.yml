@@ -49,7 +49,7 @@ jobs:
       - name: Login to Amazon ECR
         id: login-aws-ecr
         uses: aws-actions/amazon-ecr-login@v1
-              
+
       - name: Extract version from pyproject.toml
         id: get-version
         run: |
@@ -58,23 +58,21 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Extracted version: $VERSION"
 
-          - name: Build and push the tagged docker image to Amazon ECR
-          id: build-and-push
-          env:
-            ECR_REGISTRY: ${{ steps.login-aws-ecr.outputs.registry }}
-            ECR_REPOSITORY: uai/serving-ml-model
-            IMAGE_TAG: ${{ steps.get-version.outputs.VERSION }}
-          run: |
-            # Usar el formato actualizado para establecer outputs
-            echo "registry=$ECR_REGISTRY" >> $GITHUB_OUTPUT
-            echo "repository=$ECR_REPOSITORY" >> $GITHUB_OUTPUT
-            echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
-            echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
-            
-            # Build and push the Docker image
-              docker  build --platform linux/amd64 \
-                -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG  \
-                -f container/Containerfile .
-            docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
-
+      - name: Build and push the tagged docker image to Amazon ECR
+        id: build-and-push
+        env:
+          ECR_REGISTRY: ${{ steps.login-aws-ecr.outputs.registry }}
+          ECR_REPOSITORY: uai/serving-ml-model
+          IMAGE_TAG: ${{ steps.get-version.outputs.VERSION }}
+        run: |
+          # Usar el formato actualizado para establecer outputs
+          echo "registry=$ECR_REGISTRY" >> $GITHUB_OUTPUT
+          echo "repository=$ECR_REPOSITORY" >> $GITHUB_OUTPUT
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          
+          # Build and push the Docker image
+            docker  build --platform linux/amd64 \
+              -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG  \
+              -f container/Containerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
