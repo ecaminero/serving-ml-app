@@ -78,11 +78,22 @@ jobs:
               -f container/Containerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      - name: Download task definition 
+      - name: Download task definition
         run: |
-          aws ecs describe-task-definition \
-          --task-definition fastapi-ml-service-fargate \
-          --query taskDefinition > task-definition.json
+            if ! aws ecs describe-task-definition \
+              --task-definition fastapi-ml-service-fargate \
+              --query taskDefinition > task-definition.json; then
+              echo "Failed to download task definition"
+              exit 1
+            fi
+            
+            # Verify the file exists and has content
+            if [ ! -s task-definition.json ]; then
+              echo "Task definition file is empty or does not exist"
+              exit 1
+            fi
+            
+            echo "Task definition downloaded successfully"
 
       - name: Fill in new image ID in task definition
         id: render-ml-container
