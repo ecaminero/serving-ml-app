@@ -1,18 +1,13 @@
 """Entrypoint to invoke the FastAPI application service with."""
 from src import __version__
-from src.utils import id_generator
+import uuid
+import functools
+from src.base import HealthCheck, Inference
+from src.model import SentimentModel
 from fastapi import FastAPI, status
-from pydantic import BaseModel
 
 
 app = FastAPI()
-
-class HealthCheck(BaseModel):
-    """Response model to validate and return when performing a health check."""
-    status: str = "OK"
-    version: int = __version__
-
-
 
 @app.get(
     "/health",
@@ -28,11 +23,21 @@ def get_health() -> HealthCheck:
 @app.get("/", tags=["check"])
 async def get():
     return {
-        "message": id_generator(),
         "status": status.HTTP_200_OK,
         "version": __version__
     }
 
+
+# # Implementar función de predicción con caché
+# @functools.lru_cache(maxsize=128)
+# def cached_prediction(message: str):
+#     """Cache predictions for frequently requested messages."""
+#     return model.model([message])
+
 @app.post("/predict", tags=["predict"])
-async def predict():
-    return {"message": "Hello World"}
+async def predict(inference: Inference):
+    return {
+        "id": uuid.uuid1(),
+        "results": "results",
+        "message": inference.message,
+    }

@@ -12,6 +12,8 @@ python-dotenv = "^1.0.1"
 fastapi = {extras = ["standard"], version = "^0.115.12"}
 uvicorn = "^0.34.0"
 tomli = "^2.2.1"
+transformers = "^4.50.3"
+tf-keras = "2.16"
 
 [poetry.group.dev.dependencies]
 pytest = "^5.2"

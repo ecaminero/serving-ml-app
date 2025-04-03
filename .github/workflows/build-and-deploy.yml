@@ -20,7 +20,6 @@ env:
   AWS_REGION: us-east-1
   AWS_ECS_DEFINITION_FAMILY: fastapi-ml-service-fargate
 
-
 jobs:
   build_and_push:
     name: Build Container Image
