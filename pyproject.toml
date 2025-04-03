@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "serving-ml-model"
-version = "0.0.17"
+version = "0.0.18"
 description = ""
 authors = ["Edwin <ecaminero@>"]
 readme = "README.md"
