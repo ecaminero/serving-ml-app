@@ -1,12 +1,12 @@
 """Entrypoint to invoke the FastAPI application service with."""
 from src import __version__
 import uuid
-import functools
 from src.base import HealthCheck, Inference
-from src.model import SentimentModel
+from src.model import ClienteRenegotiatorModel
 from fastapi import FastAPI, status
+import pandas as pd
 
-
+model = ClienteRenegotiatorModel()
 app = FastAPI()
 
 @app.get(
@@ -28,16 +28,12 @@ async def get():
     }
 
 
-# # Implementar función de predicción con caché
-# @functools.lru_cache(maxsize=128)
-# def cached_prediction(message: str):
-#     """Cache predictions for frequently requested messages."""
-#     return model.model([message])
-
 @app.post("/predict", tags=["predict"])
 async def predict(inference: Inference):
+    df = pd.DataFrame([inference.model_dump()])
+    scaled = model.scaler.transform(df)
+    probabilidad = model.model.predict_proba(scaled)
     return {
         "id": uuid.uuid1(),
-        "results": "results",
-        "message": inference.message,
+        "results": probabilidad
     }
