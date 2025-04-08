@@ -115,7 +115,7 @@ docker build -t serving-ml-app -f container/Dockerfile .
 ```bash
 docker run -p 8000:8000 serving-ml-app
 ```
-
+![Arquitectura de la API](./arquitectura-api.png)
 ## Despliegue en Kubernetes
 
 1. Crear los archivos de configuración de Kubernetes:
