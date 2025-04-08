@@ -66,7 +66,12 @@ cd serving-ml-app
 2. Crear y activar un entorno virtual:
 
 ```bash
-python3 -m venv venv
+python -m venv venv
+
+# En Windows
+.\venv\Scripts\activate
+
+# En Linux o macOS
 source venv/bin/activate
 ```
 
@@ -78,36 +83,71 @@ Este proyecto utiliza [Poetry](https://python-poetry.org/) para la gestión de d
 poetry install
 ```
 
+> **¿Usas Windows y ves un error como este?**
+> ```
+> Current Python version (3.10.10) is not allowed by the project (^3.11)
+> ```
+> Eso significa que tu sistema tiene otra versión de Python activa.  
+> Puedes solucionarlo usando la ruta donde tengas instalado Python 3.11:
+>
+> ```bash
+> poetry env use C:\ruta\a\python311.exe
+> ```
+>
+> Para saber qué rutas tienes disponibles, ejecuta en la consola:
+> ```bash
+> where python
+> ```
+> Luego copia la ruta que corresponde a tu Python 3.11 e insértala en el comando anterior.
+
 ## Uso
 
 Para iniciar la API localmente:
 
-1. Navegar al directorio `src/api/`:
+1. Asegúrate de estar en la raíz del proyecto (donde está el archivo `pyproject.toml`)
+
+2. Ejecuta la aplicación con:
 
 ```bash
-cd src/api/
-```
-
-2. Ejecutar la aplicación:
-
-```bash
-uvicorn main:app --reload
+uvicorn src.main:app --reload
 ```
 
 La API estará disponible en `http://127.0.0.1:8000`.
 
-3. Probar la API:
-
-```bash
-curl -X POST "http://127.0.0.1:8000/predict" -H "Content-Type: application/json" -d '{"text": "Esta es una excelente reseña de producto."}'
-```
-
+---
 
 ## Prueba de la API
 
-Una vez que la aplicación esté corriendo en `http://127.0.0.1:8000`, puedes probar la API de dos formas:
+> Este proyecto cuenta con **dos endpoints `/predict` diferentes**, uno para texto libre (modelo NLP) y otro para datos numéricos (modelo estructurado). A continuación se describen ambos.
 
-### 🔹 Opción 1: Desde el navegador con FastAPI Docs
+---
+
+### 🔸 API 1: Prueba del modelo de análisis de texto (NLP)
+
+Mientras el servidor esté corriendo (`uvicorn src.main:app --reload`), no podrás escribir en esa terminal.
+
+Abre una **nueva ventana de consola (CMD o PowerShell)** para ejecutar el siguiente comando:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/predict" -H "Content-Type: application/json" -d "{"text": "Esta es una excelente reseña de producto."}"
+```
+
+Una vez ejecutado, deberías ver una respuesta similar a:
+
+```json
+{
+  "id": "0e1d8d73-1427-11f0-9ba3-bcf4d472f72c",
+  "results": {
+    "0.7878787878787878": 0.21212121212121213
+  }
+}
+```
+
+---
+
+### 🔸 API 2: Prueba del modelo con atributos estructurados
+
+#### 🔹 Opción 1: Desde el navegador con FastAPI Docs
 
 1. Abre tu navegador y visita: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 2. Haz clic en `POST /predict` y luego en **"Try it out"**
@@ -133,19 +173,15 @@ Una vez que la aplicación esté corriendo en `http://127.0.0.1:8000`, puedes pr
 4. Haz clic en **"Execute"**
 5. La predicción aparecerá en la sección **Response body**
 
----
-
-### 🔹 Opción 2: Desde la terminal usando curl
+#### 🔹 Opción 2: Desde la terminal usando curl
 
 ```bash
 curl -X POST "http://127.0.0.1:8000/predict" ^
  -H "Content-Type: application/json" ^
- -d "{"ABONO_OFERTADO":53000,"CONSUMO_SBIF":9603,"EDAD":31,"SEXO_BIN":1,"SCORE":378,"DEUDA_PROM3":992387,"PROME_UTILIZACION_3MESES":1,"PROME_LINEA_CREDITO_3MESES":594,"PROME_CANT_INSTITUTO_3MESES":3,"SUMA_MOROSA_3MESES":436,"Deuda_Char_008":1,"Pago_Char_008":0}"
+ -d "{{\"ABONO_OFERTADO\":53000,\"CONSUMO_SBIF\":9603,\"EDAD\":31,\"SEXO_BIN\":1,\"SCORE\":378,\"DEUDA_PROM3\":992387,\"PROME_UTILIZACION_3MESES\":1,\"PROME_LINEA_CREDITO_3MESES\":594,\"PROME_CANT_INSTITUTO_3MESES\":3,\"SUMA_MOROSA_3MESES\":436,\"Deuda_Char_008\":1,\"Pago_Char_008\":0}}"
 ```
 
 Esto devolverá una respuesta JSON con la predicción del modelo.
-
-
 ## Dockerización
 
 1. Construir la imagen Docker:
