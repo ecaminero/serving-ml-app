@@ -32,8 +32,9 @@ async def get():
 async def predict(inference: Inference):
     df = pd.DataFrame([inference.model_dump()])
     scaled = model.scaler.transform(df)
-    probabilidad = model.model.predict_proba(scaled)
+    probabilidad = model.model.predict_proba(scaled)[0]
+
     return {
         "id": uuid.uuid1(),
-        "results": probabilidad
+        "probabilidad": probabilidad.tolist(),
     }
