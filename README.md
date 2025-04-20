@@ -1,12 +1,9 @@
 
 # API de Despliegue de Modelo de Machine Learning con FastAPI
 
-Este proyecto implementa una API RESTful utilizando FastAPI para el despliegue del modelo de machine learning 'multilingual-uncased-sentiment'.
-Este modelo, basado en BERT, está optimizado para el análisis de sentimientos en reseñas de productos en seis idiomas: inglés, neerlandés, alemán, francés, español e italiano.
-Predice la opinión de la reseña mediante un número de estrellas (entre 1 y 5).
+Este proyecto implementa una API RESTful utilizando FastAPI para el despliegue del modelo de machine learning sobre  la renegociación de deudas.
 
-## Tabla de Contenidos
-
+## Tabla de Contenidos  
 - [Descripción del Proyecto](#descripción-del-proyecto)
 - [Estructura del Proyecto](#estructura-del-proyecto)
 - [Instalación](#instalación)
@@ -18,8 +15,45 @@ Predice la opinión de la reseña mediante un número de estrellas (entre 1 y 5)
 
 ## Descripción del Proyecto
 
-Esta API permite a los usuarios enviar texto en uno de los seis idiomas soportados y recibir una predicción del sentimiento en forma de estrellas (1 a 5).
-Utiliza FastAPI para manejar las solicitudes HTTP y el modelo 'multilingual-uncased-sentiment' para el análisis de sentimientos.
+Este proyecto implementa un modelo de árbol de decisión para la evaluación de propuestas de renegociación de deudas. El sistema analiza múltiples variables relacionadas con el perfil del deudor y su comportamiento crediticio para determinar la viabilidad de aceptar una propuesta de renegociación, generando un resultado binario que indica la aprobación (1) o rechazo (0) de la solicitud.
+Puedes ver la implementación del modelo en [Notebook](notebooks/analisis-de-clientes-bancarios.ipynb "Notebook de análisis")
+
+
+### Variables de Entrada del Modelo
+El árbol de decisión evalúa los siguientes atributos para cada caso:
+
+* ABONO_OFERTADO: Monto propuesto como pago inicial (ej. 53000)
+* CONSUMO_SBIF: Indicador de consumo reportado al regulador financiero (ej. 9603)
+* EDAD: Edad del deudor (ej. 31)
+* SEXO_BIN: Indicador binario de género (1: masculino, 0: femenino)
+* SCORE: Puntuación crediticia del cliente (ej. 378)
+* DEUDA_PROM3: Deuda promedio de los últimos 3 meses (ej. 992387)
+* PROME_UTILIZACION_3MESES: Ratio de utilización de crédito (0-1)
+* PROME_LINEA_CREDITO_3MESES: Promedio de línea de crédito disponible (ej. 594)
+* PROME_CANT_INSTITUTO_3MESES: Número promedio de instituciones financieras con las que mantiene deuda (ej. 3)
+* SUMA_MOROSA_3MESES: Suma de días en mora en los últimos 3 meses (ej. 436)
+* Deuda_Char_008: Indicador binario de caracterización de deuda (1: cumple condición, 0: no cumple)
+* Pago_Char_008: Indicador binario de comportamiento de pago (1: cumple condición, 0: no cumple)
+
+### Variable de Salida
+Resultado binario:
+* 1: Aprobar la propuesta de renegociación
+* 0: Rechazar la propuesta de renegociación
+
+###  Características principales
+
+* Implementación de árbol de decisión para clasificación binaria
+* Evaluación automatizada basada en reglas derivadas del análisis de datos históricos
+* Alta interpretabilidad de las decisiones a través de la estructura del árbol
+* Capacidad de predecir la probabilidad de éxito de una renegociación
+
+## Requisitos
+- Python 3.11+
+- FastAPI
+- Uvicorn
+- Pydantic
+- Dependencias específicas del modelo (scikit-learn, TensorFlow, PyTorch, etc.)
+
 
 ## Estructura del Proyecto
 
@@ -66,8 +100,6 @@ cd serving-ml-app
 2. Crear y activar un entorno virtual:
 
 ```bash
-python -m venv venv
-
 # En Windows
 .\venv\Scripts\activate
 
@@ -109,11 +141,10 @@ Para iniciar la API localmente:
 2. Ejecuta la aplicación con:
 
 ```bash
-uvicorn src.main:app --reload
+poetry run fastapi dev src/main.py
 ```
 
 La API estará disponible en `http://127.0.0.1:8000`.
-
 ---
 
 ## Prueba de la API
@@ -122,32 +153,46 @@ La API estará disponible en `http://127.0.0.1:8000`.
 
 ---
 
-### 🔸 API 1: Prueba del modelo de análisis de texto (NLP)
+### Prueba del modelo
 
 Mientras el servidor esté corriendo (`uvicorn src.main:app --reload`), no podrás escribir en esa terminal.
 
 Abre una **nueva ventana de consola (CMD o PowerShell)** para ejecutar el siguiente comando:
 
 ```bash
-curl -X POST "http://127.0.0.1:8000/predict" -H "Content-Type: application/json" -d "{"text": "Esta es una excelente reseña de producto."}"
+curl -X POST "http://127.0.0.1:8000/predict" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ABONO_OFERTADO": 53000,
+    "CONSUMO_SBIF": 9603,
+    "EDAD": 31,
+    "SEXO_BIN": 1,
+    "SCORE": 378,
+    "DEUDA_PROM3": 992387,
+    "PROME_UTILIZACION_3MESES": 1,
+    "PROME_LINEA_CREDITO_3MESES": 594,
+    "PROME_CANT_INSTITUTO_3MESES": 3,
+    "SUMA_MOROSA_3MESES": 436,
+    "Deuda_Char_008": 1,
+    "Pago_Char_008": 0
+  }'
 ```
 
 Una vez ejecutado, deberías ver una respuesta similar a:
 
 ```json
 {
-  "id": "0e1d8d73-1427-11f0-9ba3-bcf4d472f72c",
-  "results": {
-    "0.7878787878787878": 0.21212121212121213
-  }
+    "id":"3a0d2858-1df1-11f0-a6ef-c2dc360e8a7d",
+    "probabilidad":[
+        0.7878787878787878, 
+        0.21212121212121213
+    ]
 }
 ```
-
 ---
 
-### 🔸 API 2: Prueba del modelo con atributos estructurados
-
-#### 🔹 Opción 1: Desde el navegador con FastAPI Docs
+#### 🔹 Opción 2: Desde el navegador con FastAPI Docs
+![Arquitectura de la API](docs/imagen1.png "Título opcional")
 
 1. Abre tu navegador y visita: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 2. Haz clic en `POST /predict` y luego en **"Try it out"**
@@ -173,15 +218,6 @@ Una vez ejecutado, deberías ver una respuesta similar a:
 4. Haz clic en **"Execute"**
 5. La predicción aparecerá en la sección **Response body**
 
-#### 🔹 Opción 2: Desde la terminal usando curl
-
-```bash
-curl -X POST "http://127.0.0.1:8000/predict" ^
- -H "Content-Type: application/json" ^
- -d "{{\"ABONO_OFERTADO\":53000,\"CONSUMO_SBIF\":9603,\"EDAD\":31,\"SEXO_BIN\":1,\"SCORE\":378,\"DEUDA_PROM3\":992387,\"PROME_UTILIZACION_3MESES\":1,\"PROME_LINEA_CREDITO_3MESES\":594,\"PROME_CANT_INSTITUTO_3MESES\":3,\"SUMA_MOROSA_3MESES\":436,\"Deuda_Char_008\":1,\"Pago_Char_008\":0}}"
-```
-
-Esto devolverá una respuesta JSON con la predicción del modelo.
 ## Dockerización
 
 1. Construir la imagen Docker:
@@ -196,8 +232,14 @@ docker build -t serving-ml-app -f container/Dockerfile .
 docker run -p 8000:8000 serving-ml-app
 ```
 
-![Arquitectura de la API](./arquitectura-api.png)
-## Despliegue en Kubernetes
+## Arquitectura En AWS
+![Arquitectura de la API](docs/fargate-arquitecture.webp "Título opcional")
+
+
+
+## Opcional: Despliegue en Kubernetes
+
+![Arquitectura de la API](docs/arquitectura-api.png)
 
 1. Crear los archivos de configuración de Kubernetes:
 
